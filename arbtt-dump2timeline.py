@@ -31,6 +31,7 @@ from datetime import date, datetime, timedelta
 import plotly.express as px
 import pandas as pd
 import sys, json;
+import copy
 
 DEFAULT_INACTIVE_THRESHOLD = 5*60 # 5 minutes
 
@@ -61,12 +62,16 @@ def plot_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
         if is_incative:
             # remove until when inactivity started
             remove_until = timestamp-timedelta(milliseconds=int(sample['inactive']))
+            org_tasks = copy.deepcopy(tasks)
             if len(tasks)>0:
-                while tasks[-1]["Start"] > remove_until:
-                    tasks.pop()
-                # Fix the last non-inactive
-                if tasks[-1]["Program"]!="AFK" and tasks[-1]["Finish"]>remove_until:
-                    tasks[-1]["Finish"] = remove_until
+                try:
+                    while tasks[-1]["Start"] > remove_until:
+                        tasks.pop()
+                    # Fix the last non-inactive
+                    if tasks[-1]["Program"]!="AFK" and tasks[-1]["Finish"]>remove_until:
+                        tasks[-1]["Finish"] = remove_until
+                except:
+                    print("FIXME", org_tasks)
 
             tasks.append( dict(Task="", Start=remove_until, Finish=timestamp, Program="AFK" ) )
             prev_timestamp = timestamp
@@ -110,10 +115,19 @@ if __name__=="__main__":
         set_date = date.today()
     if args.date:
         set_date = parser.parse(args.date)
+        print("Using date", set_date)
     
     if set_date is not None:
-        roi_span_start = datetime.combine(set_date, datetime.min.time()).astimezone()
-        roi_span_end = roi_span_start+timedelta(hours=24)
+        if isinstance(set_date, date):
+            roi_full_day_span_start = datetime.combine(set_date, datetime.min.time()).astimezone()
+            roi_span_start = roi_full_day_span_start
+        else:
+            roi_span_start = datetime.combine(set_date.date(), set_date.time()).astimezone()
+            roi_full_day_span_start = datetime.combine(roi_span_start.date(), datetime.min.time()).astimezone()
+
+        roi_span_end = roi_full_day_span_start+timedelta(hours=24)
+        print("Using date", roi_span_start)
+        print("Using date", roi_span_end)
 
     data = json.load(sys.stdin)
     plot_arbtt_dump(data, args.inact, roi_span_start, roi_span_end)
