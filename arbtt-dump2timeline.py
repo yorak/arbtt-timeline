@@ -24,6 +24,15 @@ an example is given below:
     ],
     "rate": 60000
 }
+
+So, for example:
+
+arbtt-dump -t JSON | python3 arbtt-dump2timeline.py --today
+
+In case your arbtt database grows too big, just split it. Or.
+
+ arbtt-dump -t JSON | echo "[$(grep 2023-08-01T)" | python3 arbtt-dump2timeline.py --today
+
 """
 
 from dateutil import parser
@@ -41,8 +50,7 @@ def get_local_tz():
     local_tz = local_now.tzinfo
     return local_tz
 
-def plot_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
-
+def convert_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
     local_tz = get_local_tz()
     prev_title = None
     prev_timestamp = None
@@ -86,9 +94,15 @@ def plot_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
                 prev_title = active_title
 
     if len(tasks)==0:
-        return
+        return None
 
     df = pd.DataFrame(tasks)
+
+    return df
+
+def plot_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
+
+    df = convert_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None)
 
     fig = px.timeline(df, x_start="Start", x_end="Finish", y="Program", hover_name="Task", color="Program")
     fig.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom up
