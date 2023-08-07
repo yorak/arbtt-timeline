@@ -104,7 +104,7 @@ def plot_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
     df = convert_arbtt_dump(data, inact_th, roi_span_start, roi_span_end)
     if df is None or df.empty:
         print("No data")
-    return
+        return
 
     fig = px.timeline(df, x_start="Start", x_end="Finish", y="Program", hover_name="Task", color="Program")
     fig.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom up
