@@ -66,7 +66,6 @@ def convert_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = Non
             for w in sample['windows'] if w['active']), None)
         is_incative = sample['inactive']>inact_th*1000
 
-        # TODO: this is wrong, the incative is not a continous span. Fix it.
         if is_incative:
             # remove until when inactivity started
             remove_until = timestamp-timedelta(milliseconds=int(sample['inactive']))
@@ -102,7 +101,10 @@ def convert_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = Non
 
 def plot_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None):
 
-    df = convert_arbtt_dump(data, inact_th, roi_span_start = None, roi_span_end = None)
+    df = convert_arbtt_dump(data, inact_th, roi_span_start, roi_span_end)
+    if df is None or df.empty:
+        print("No data")
+    return
 
     fig = px.timeline(df, x_start="Start", x_end="Finish", y="Program", hover_name="Task", color="Program")
     fig.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom up
@@ -117,8 +119,10 @@ if __name__=="__main__":
     import argparse
     argparser = argparse.ArgumentParser(description='Produces a timeline plot from raw arbtt-dump JSON output.',
         epilog='Example of use:\n'+'arbtt-dump -t JSON | ./arbtt-dump2timeline.py --date 2022-12-02')
-    argparser.add_argument("--today", help="only show activity of the current day", action="store_true")
-    argparser.add_argument("--date", help="only show activity for a given date")
+    dategroup = argparser.add_mutually_exclusive_group()
+    dategroup.add_argument("--today", help="only show activity of the current day", action="store_true")
+    dategroup.add_argument("--yesterday", help="only show activity of the previous day", action="store_true")
+    dategroup.add_argument("--date", help="only show activity for a given date")
     argparser.add_argument("--inact", help="interpret this long inactivity as AFK (in seconds, default %d)"%DEFAULT_INACTIVE_THRESHOLD,
                            type=int, default=DEFAULT_INACTIVE_THRESHOLD)
     
@@ -127,6 +131,8 @@ if __name__=="__main__":
     set_date = None
     if args.today:
         set_date = date.today()
+    if args.yesterday:
+        set_date = date.today()-timedelta(days=1)
     if args.date:
         set_date = parser.parse(args.date)
         print("Using date", set_date)
